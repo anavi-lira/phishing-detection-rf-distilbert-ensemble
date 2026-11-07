@@ -1,0 +1,32 @@
+{
+  "seed": 42,
+  "dataset": {
+    "name": "zefang-liu/phishing-email-dataset",
+    "split": "train",
+    "text_column": "Email Text",
+    "label_column": "Email Type",
+    "max_samples": 5000,
+    "train_ratio": 0.60,
+    "val_ratio": 0.20,
+    "test_ratio": 0.20
+  },
+  "random_forest": {
+    "tfidf_max_features": 20000,
+    "ngram_min": 1,
+    "ngram_max": 2,
+    "grid_search": true,
+    "cv_folds": 3
+  },
+  "distilbert": {
+    "model_name": "distilbert-base-uncased",
+    "max_length": 256,
+    "batch_size": 16,
+    "epochs": 3,
+    "learning_rate": 0.00002,
+    "weight_decay": 0.01
+  },
+  "ensemble": {
+    "weight_step": 0.05,
+    "threshold": 0.50
+  }
+}
