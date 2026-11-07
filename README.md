@@ -1,179 +1,170 @@
-# Detector Híbrido de Phishing — Random Forest + DistilBERT
+# Phishing Detection with Random Forest, DistilBERT and Weighted Ensemble
 
-Miniprojeto inspirado em:
+Projeto desenvolvido para avaliação de técnicas de Inteligência Artificial aplicadas à detecção de e-mails de phishing.
 
-**Tarapiah, S.; Abbas, L.; Mardawi, O.; Atalla, S.; Himeur, Y.; Mansoor, W.**
-*Evaluating the Effectiveness of Large Language Models (LLMs) Versus Machine Learning (ML) in Identifying and Detecting Phishing Email Attempts.*
-Algorithms, 18(10), 599, 2025.
-DOI: https://doi.org/10.3390/a18100599
+O trabalho foi inspirado no artigo:
 
-## Proposta
+**Tarapiah et al. (2025). _Evaluating the Effectiveness of Large Language Models (LLMs) Versus Machine Learning (ML) in Identifying and Detecting Phishing Email Attempts_. Algorithms, 18(10), 599.**
 
-O artigo compara modelos clássicos de ML e Transformers para phishing e indica que uma abordagem híbrida/ensemble pode ser uma direção promissora.
+## Objetivo
 
-Este repositório implementa:
+Comparar o desempenho de duas abordagens diferentes para classificação de e-mails:
 
-1. **Random Forest + TF-IDF**
-2. **DistilBERT com transfer learning**
-3. **Ensemble 50/50**
-4. **Ensemble ponderado proposto**
+- Random Forest com TF-IDF;
+- DistilBERT com transfer learning.
 
-A modificação principal é o **ensemble entre um modelo tradicional (Random Forest) e um Transformer (DistilBERT)**.
+Como modificação em relação ao artigo original, também foi implementado um **ensemble híbrido**, combinando as probabilidades geradas pelos dois modelos.
 
-A probabilidade final é:
-
-`P(phishing) = α * P_RF + (1 - α) * P_DistilBERT`
-
-O peso `α` é escolhido automaticamente no conjunto de validação para maximizar o F1-score. Assim, o teste final continua separado.
+A ideia foi verificar se a combinação entre um modelo tradicional de Machine Learning e um Transformer poderia apresentar desempenho superior ao uso individual dos modelos.
 
 ## Dataset
 
-Por padrão é usada a base pública:
+Foi utilizado o dataset público:
 
 `zefang-liu/phishing-email-dataset`
 
-Ela possui os campos `Email Text` e `Email Type` e é uma das fontes públicas citadas no artigo-base.
+disponível no Hugging Face.
 
-Para o miniprojeto, o código seleciona **5.000 e-mails por amostragem estratificada** e divide em:
+Para reduzir o custo computacional do experimento, foi utilizado um subconjunto de **5.000 e-mails**.
 
-- 60% treino
-- 20% validação
-- 20% teste
+A divisão utilizada foi:
 
-Todos os modelos usam exatamente os mesmos conjuntos.
+- 60% para treinamento;
+- 20% para validação;
+- 20% para teste.
+
+As classes consideradas foram:
+
+- `0` — e-mail legítimo;
+- `1` — phishing.
 
 ## Random Forest
 
-Pré-processamento:
-- remoção de HTML;
-- minúsculas;
-- URLs substituídas por token;
-- e-mails substituídos por token;
-- caracteres especiais removidos;
-- TF-IDF;
-- unigramas + bigramas;
-- stop words em inglês removidas.
+Para o Random Forest foi utilizado:
 
-Grid Search:
-- `n_estimators`: 200, 400
-- `max_depth`: None, 30
-- `min_samples_split`: 2, 5
-- `class_weight`: None, balanced
-- 3-fold cross-validation
-- seleção por F1
+- limpeza básica dos textos;
+- TF-IDF;
+- unigramas e bigramas;
+- Grid Search;
+- validação cruzada com 3 folds.
+
+Os hiperparâmetros foram escolhidos utilizando o F1-score como métrica principal.
 
 ## DistilBERT
 
-- base: `distilbert-base-uncased`
-- transfer learning: sim
-- max length: 256
-- batch size: 16
-- épocas: 3
-- learning rate: 2e-5
-- weight decay: 0.01
-- dropout: 0.1
-- melhor checkpoint selecionado pelo F1 na validação
+Foi utilizado o modelo:
 
-## Métricas
+`distilbert-base-uncased`
 
-- Accuracy
-- Precision
-- Recall
-- F1-score
-- Balanced Accuracy
-- ROC-AUC
-- Matriz de confusão
+O modelo foi ajustado por meio de fine-tuning para a classificação binária entre e-mails legítimos e phishing.
 
-## Instalação
+Configuração utilizada:
 
-Python 3.11 recomendado.
+- 3 épocas;
+- batch size 16;
+- learning rate `2e-5`;
+- weight decay `0.01`;
+- máximo de 256 tokens.
 
-```bash
-python -m venv .venv
+## Ensemble proposto
+
+A principal modificação do projeto foi a combinação das previsões do Random Forest e do DistilBERT.
+
+A probabilidade final foi calculada por:
+
+```text
+P_final = α * P_RF + (1 - α) * P_DistilBERT
 ```
 
-Windows:
+O valor de `α` foi escolhido automaticamente no conjunto de validação, buscando o maior F1-score.
 
-```bash
-.venv\Scripts\activate
-```
-
-Linux/macOS:
-
-```bash
-source .venv/bin/activate
-```
-
-Depois:
-
-```bash
-pip install -r requirements.txt
-```
-
-## Executar tudo
-
-```bash
-python run_all.py
-```
-
-A primeira execução baixa o dataset e o DistilBERT.
-
-> Para o fine-tuning do DistilBERT, GPU é recomendada. Google Colab é uma boa opção caso o computador não tenha GPU adequada.
+Também foi avaliado um ensemble simples com pesos 50/50.
 
 ## Resultados
 
-Os arquivos aparecem em `results/`:
+Os resultados obtidos no conjunto de teste foram:
 
-- `random_forest_metrics.json`
-- `distilbert_metrics.json`
-- `ensemble_metrics.json`
-- `model_comparison.csv`
-- `model_comparison.png`
-- `test_predictions.csv`
+| Modelo | Accuracy | Precision | Recall | F1-score | Balanced Accuracy | ROC-AUC |
+|---|---:|---:|---:|---:|---:|---:|
+| Random Forest | 0.9660 | 0.9472 | 0.9625 | 0.9548 | 0.9653 | 0.9950 |
+| DistilBERT | 0.9790 | 0.9809 | 0.9625 | 0.9716 | 0.9757 | 0.9979 |
+| Ensemble 50/50 | 0.9810 | **0.9836** | 0.9651 | 0.9743 | 0.9778 | 0.9990 |
+| **Ensemble ponderado** | **0.9860** | 0.9787 | **0.9839** | **0.9813** | **0.9856** | 0.9988 |
 
-Os modelos ficam em `models/`.
+O **ensemble ponderado apresentou o melhor desempenho geral**, obtendo os maiores valores de:
 
-## Demonstração
+- Accuracy;
+- Recall;
+- F1-score;
+- Balanced Accuracy.
 
-Depois do treinamento:
+Isso indica que a combinação entre Random Forest e DistilBERT conseguiu aproveitar características complementares dos dois modelos.
 
-```bash
-streamlit run app.py
+## Estrutura do experimento
+
+```text
+E-mail
+   |
+   +----> TF-IDF ----> Random Forest ----+
+   |                                     |
+   |                                     +----> Ensemble ----> Resultado final
+   |                                     |
+   +----> Tokenizer ----> DistilBERT ----+
 ```
 
-A tela permite colar um e-mail e comparar:
-- probabilidade do Random Forest;
-- probabilidade do DistilBERT;
-- resultado final do ensemble.
+## Métricas utilizadas
 
-Também é possível usar o terminal:
+Foram utilizadas as seguintes métricas:
 
-```bash
-python -m src.predict
+- Accuracy;
+- Precision;
+- Recall;
+- F1-score;
+- Balanced Accuracy;
+- ROC-AUC;
+- Matriz de confusão.
+
+## Execução no Google Colab
+
+O experimento foi desenvolvido e executado utilizando Google Colab com GPU T4.
+
+Para executar o notebook:
+
+1. Faça upload do arquivo `.ipynb` no Google Colab.
+2. Ative a GPU em:
+   `Ambiente de execução → Alterar tipo de ambiente de execução → GPU`.
+3. Execute todas as células em sequência.
+4. Ao final serão geradas as métricas, gráficos e matrizes de confusão.
+
+## Arquivos gerados
+
+Ao final da execução são produzidos arquivos como:
+
+```text
+model_comparison.csv
+model_comparison.png
+confusion_matrices.png
+test_predictions.csv
+ensemble_config.json
 ```
 
-## Relação com os critérios do miniprojeto
+## Conclusão
 
-| Critério | Projeto |
-|---|---|
-| Base | Phishing Email Dataset |
-| População de enxame | Não se aplica |
-| Treino/validação/teste | 60/20/20 |
-| Validação cruzada | 3-fold no RF |
-| Algoritmos | Random Forest e DistilBERT |
-| Hiperparâmetros | Grid Search no RF |
-| Transfer learning | Sim |
-| Regularização | Dropout + weight decay |
-| Aumento de dados | Não |
-| Desbalanceamento | Split estratificado + `class_weight` testado |
-| Métricas | Accuracy, Precision, Recall, F1, Balanced Accuracy, ROC-AUC |
-| Modificação | Ensemble RF + DistilBERT |
+O experimento mostrou que a combinação entre Random Forest e DistilBERT apresentou desempenho superior ao uso isolado dos modelos em várias métricas.
 
-## Observação
+O ensemble ponderado alcançou:
 
-Este miniprojeto é uma reprodução reduzida e uma extensão do artigo, e não uma reprodução integral.
-O artigo trabalha com diversas bases, modelos e URLs; aqui o foco é uma comparação reproduzível entre dois modelos e a proposta híbrida.
+- **98,6% de acurácia**;
+- **98,39% de recall**;
+- **98,13% de F1-score**;
+- **98,56% de balanced accuracy**.
 
-## Fonte do dataset
+Os resultados indicam que a utilização conjunta de modelos tradicionais de Machine Learning e modelos baseados em Transformers pode ser uma alternativa interessante para detecção de phishing.
 
-https://huggingface.co/datasets/zefang-liu/phishing-email-dataset
+## Referência
+
+Tarapiah, S.; Abbas, L.; Mardawi, O.; Atalla, S.; Himeur, Y.; Mansoor, W.  
+**Evaluating the Effectiveness of Large Language Models (LLMs) Versus Machine Learning (ML) in Identifying and Detecting Phishing Email Attempts.**  
+Algorithms, 18(10), 599, 2025.
+
+DOI: `10.3390/a18100599`
